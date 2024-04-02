@@ -1,0 +1,71 @@
+
+.new{
+    background-color: #1a1a1a;
+    color: aliceblue;
+    display: flex;
+    flex-direction: column;
+}
+
+.top {
+    display: flex;
+    justify-content: space-evenly;
+
+}
+.hide{
+    display: none;
+}
+.top button{
+    width: 10em;
+}
+.new__container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Minimum 300 piksel genişliğinde ve sığdığı kadar sütun oluştur */
+    grid-auto-rows: auto; /* Satırların otomatik olarak boyutunu ayarla */
+    gap: 20px; /* Sütunlar ve satırlar arasındaki boşluk */
+  }
+  
+  .new__item {
+    position: relative;
+    
+  }
+  
+  .new__item img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  
+  .tick{
+    opacity: .4;
+  }
+
+  .loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .loading-spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-left-color: #1a1a1a;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  
