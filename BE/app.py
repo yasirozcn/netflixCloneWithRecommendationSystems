@@ -15,7 +15,7 @@ CORS(app)
 def after_request(response):
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Origin', '*')  # Allow requests from any origin
+    response.headers.add('Access-Control-Allow-Origin', '*')
     return response
 
 def item_based_recommendation(movie_title, min_ratings=40, top_n=10):
@@ -175,35 +175,6 @@ def get_movie_details(movie_id):
         print(f"An error occurred: {e}")
         return None
 
-    try:
-        db_config = {
-            'host': 'localhost',
-            'user': 'root',
-            'password': '54zs106ve449',
-            'database': 'recom'
-        }
-
-        # Veritabanı bağlantısı
-        conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor()
-
-        # Her film için kullanıcı-film ilişkisini veritabanına ekle
-        for movie_id in movie_ids:
-            # SQL sorgusu
-            sql = "INSERT INTO ratings_small (userId, movieId, rating) VALUES (%s, %s, %s)"
-            # Parametreler
-            val = (user_id, movie_id, 5)  # Kullanıcının tüm favori filmlerine 5 puan veriyoruz
-            # Sorguyu çalıştırma
-            cursor.execute(sql, val)
-
-        # Değişiklikleri kaydetme ve bağlantıyı kapatma
-        conn.commit()
-        conn.close()
-
-        return {'success': True, 'message': 'Favorite movies added successfully.'}
-
-    except Exception as e:
-        return {'success': False, 'error': str(e)}
 
 def generate_unique_id(string):
     # Verilen string'in SHA-256 hash'ini al
@@ -310,104 +281,6 @@ def get_random_movies():
         print(f"An error occurred: {e}")
         return jsonify({'error': 'An error occurred while processing your request.'}), 500
 
-    try:
-        db_config = {
-            'host': 'localhost',
-            'user': 'root',
-            'password': '54zs106ve449',
-            'database': 'recom'
-        }
-
-        conn = mysql.connector.connect(**db_config)
-        data_query = "SELECT movieId FROM ratings_small"
-        ratings_data = pd.read_sql_query(data_query, conn)
-        conn.close()
-
-        selected_movies = pd.read_csv("/Users/ahmetyasirozcan/Desktop/Homeworks/recommendation_systems/archive/selected_movies.csv")
-        selected_movies['id'] = pd.to_numeric(selected_movies['id'], errors='coerce', downcast='integer')
-
-        # Find common Id's and filter
-        filtered_movies = selected_movies[selected_movies['id'].isin(ratings_data['movieId'])]
-
-        # Select 30 random movies
-        random_movies = filtered_movies.sample(n=30)
-        
-        # Get movie details and movieIds
-        movie_ids = random_movies['id'].tolist()
-        movie_details_list = []
-        for movie_id in movie_ids:
-            movie_details = get_movie_details(movie_id)
-            if movie_details:
-                movie_details_with_id = {'id': int(movie_id), 'details': movie_details}
-                movie_details_list.append(movie_details_with_id)
-
-        # Get movieIds as a list
-        movie_ids_list = [int(movie_id) for movie_id in movie_ids]
-
-        return jsonify({'movie_details': movie_details_list, 'movie_ids': movie_ids_list})
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return jsonify({'error': 'An error occurred while processing your request.'}), 500
-
-    try:
-        db_config = {
-            'host': 'localhost',
-            'user': 'root',
-            'password': '54zs106ve449',
-            'database': 'recom'
-        }
-
-        conn = mysql.connector.connect(**db_config)
-        data_query = "SELECT movieId FROM ratings_small"
-        ratings_data = pd.read_sql_query(data_query, conn)
-        conn.close()
-
-        selected_movies = pd.read_csv("/Users/ahmetyasirozcan/Desktop/Homeworks/recommendation_systems/archive/selected_movies.csv")
-        selected_movies['id'] = pd.to_numeric(selected_movies['id'], errors='coerce', downcast='integer')
-
-        # Find common Id's and filter
-        filtered_movies = selected_movies[selected_movies['id'].isin(ratings_data['movieId'])]
-
-        # Select 30 random movies
-        random_movies = filtered_movies.sample(n=30)
-        
-        # Get movie details and movieIds
-        movie_ids = random_movies['id'].tolist()
-        movie_details_list = []
-        for movie_id in movie_ids:
-            movie_details = get_movie_details(movie_id)
-            if movie_details:
-                movie_details_with_id = {'id': int(movie_id), 'details': movie_details}
-                movie_details_list.append(movie_details_with_id)
-
-        # Get movieIds as a list
-        movie_ids_list = [int(movie_id) for movie_id in movie_ids]
-
-        return jsonify({'movie_details': movie_details_list, 'movie_ids': movie_ids_list})
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return jsonify({'error': 'An error occurred while processing your request.'}), 500
-
-
-    try:
-        # Gelen veriyi JSON formatında al
-        data = request.json
-
-        # Kullanıcı kimliği ve favori filmlerin kimliklerini al
-        user_id = data.get('user_id')
-        movie_ids = data.get('movie_ids')
-
-        # Favori filmleri kullanıcı için veritabanına ekleyen fonksiyonu çağır
-        result = add_favorite_movies(user_id, movie_ids)
-
-        if result['success']:
-            return jsonify({'message': 'Favorite movies added successfully.'}), 200
-        else:
-            return jsonify({'error': 'An error occurred while processing your request.'}), 500
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
     
 @app.route('/add_favorite_movies', methods=['POST'])
 def add_favorite_movies():

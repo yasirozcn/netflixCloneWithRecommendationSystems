@@ -1,10 +1,12 @@
-/* eslint-disable react/prop-types */
 /* eslint-disable no-unused-vars */
+/* eslint-disable react/prop-types */
 import React, { useEffect, useState } from "react";
 import "../styles/new.css";
 import { useNavigate } from "react-router-dom";
 
-function NewUser({ user }) {
+function NewUser({ user, submitMovies }) {
+  // submitMovies'u props olarak al
+
   const [random, setRandom] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedMovies, setSelectedMovies] = useState([]);
@@ -44,33 +46,12 @@ function NewUser({ user }) {
       setSelectedMovies(newSelectedMovies);
     }
   };
-  const submitMovies = () => {
-    fetch("http://127.0.0.1:5000/add_favorite_movies", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        user_id: user.uid,
-        movie_ids: selectedMovies,
-      }),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        return response.json();
-      })
-      .then((data) => {
-        console.log(data);
-        alert("Seçilen filmler başarı ile kaydedildi.");
-        navigate("/");
-      })
-      .catch((error) => {
-        console.error("There was a problem with the fetch operation:", error);
-        // Handle error
-      });
+
+  const handleSubmit = () => {
+    // submitMovies fonksiyonunu çağır ve seçilen filmleri gönder
+    submitMovies(selectedMovies);
   };
+
   console.log(selectedMovies);
   return (
     <div className="new">
@@ -78,14 +59,13 @@ function NewUser({ user }) {
         <h1>Lütfen en az 4 en fazla 8 film seçin.</h1>
         <button
           className={selectedMovies.length < 4 ? "hide" : ""}
-          onClick={submitMovies}
+          onClick={handleSubmit} // Gönder düğmesine tıklamada handleSubmit fonksiyonunu çağır
         >
           Gönder
         </button>
       </div>
 
       <div className="new__container">
-        ß
         {loading ? (
           <div className="loading-overlay">
             <div className="loading-spinner"></div>
