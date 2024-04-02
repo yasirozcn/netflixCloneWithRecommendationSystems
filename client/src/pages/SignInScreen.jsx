@@ -48,18 +48,18 @@ function SignInScreen() {
   return (
     <div className="signinContainer">
       <form className="signin__form" onSubmit={(e) => e.preventDefault()}>
-        <h1>Sign In</h1>
+        <h1>Giriş yap</h1>
         <input ref={emailRef} type="email" placeholder="Email" />
         <input ref={passwordRef} type="password" placeholder="Password" />
         <button type="submit" onClick={signIn}>
           {" "}
-          Sign In
+          Giriş yap
         </button>
 
         <p>
-          New to Netflix?{" "}
+          Netflixte yeni misin?{" "}
           <span onClick={signUp} style={{ cursor: "pointer" }}>
-            Sign Up now.
+            Şimdi kayıt ol.
           </span>{" "}
         </p>
       </form>

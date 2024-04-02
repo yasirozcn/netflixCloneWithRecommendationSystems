@@ -63,7 +63,7 @@ function NewUser({ user }) {
       })
       .then((data) => {
         console.log(data);
-        alert("Selected movies were successfully recorded");
+        alert("Seçilen filmler başarı ile kaydedildi.");
         navigate("/");
       })
       .catch((error) => {
@@ -75,12 +75,12 @@ function NewUser({ user }) {
   return (
     <div className="new">
       <div className="top">
-        <h1>Please select at least 4 movies</h1>
+        <h1>Lütfen en az 4 en fazla 8 film seçin.</h1>
         <button
           className={selectedMovies.length < 4 ? "hide" : ""}
           onClick={submitMovies}
         >
-          Submit
+          Gönder
         </button>
       </div>
 

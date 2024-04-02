@@ -22,7 +22,7 @@ function Profiles({ user, setUser }) {
   return (
     <div className="profiles__container">
       <div className="profiles__text">
-        <h1>WHO'S WATCHING</h1>
+        <h1>KİM İZLİYOR</h1>
       </div>
       <div className="profiles__user">
         <img
@@ -33,10 +33,10 @@ function Profiles({ user, setUser }) {
       </div>
       <div className="profiles__buttons">
         <button className="profiles__buton" onClick={backToWatch}>
-          Back to watch
+          İzlemeye devam et
         </button>
         <button className="profiles__buton" onClick={signOut}>
-          Sign Out
+          Çıkış yap
         </button>
       </div>
     </div>

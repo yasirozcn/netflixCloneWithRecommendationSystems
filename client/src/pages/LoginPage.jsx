@@ -22,9 +22,10 @@ function LoginPage({ user }) {
             onClick={() => {
               setSignIn(true);
             }}
+            style={{ cursor: "pointer" }}
             className="loginScreen__button"
           >
-            Sign In
+            Giriş yap
           </button>
           <div className="loginScreen__gradient" />
         </div>
@@ -33,7 +34,7 @@ function LoginPage({ user }) {
         <SignInScreen user={user} />
       ) : (
         <div className="loginScreen__body">
-          <h1>Filmler TV dizileri ve daha fazlası....</h1>
+          <h1>Filmler, TV dizileri ve daha fazlası....</h1>
           <h2>İstedğin yerde izle. İstediğin zaman iptal et..</h2>
           <h3>
             İzlemeye hazır mısın? Kayıt olmak için şimdi e-posta adresini gir.
