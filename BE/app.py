@@ -176,14 +176,6 @@ def get_movie_details(movie_id):
         return None
 
 
-def generate_unique_id(string):
-    # Verilen string'in SHA-256 hash'ini al
-    hashed = sha256(string.encode()).hexdigest()
-    # İlk 8 karakteri alarak benzersiz bir tamsayı oluştur
-    unique_id = int(hashed[:8], 16)
-    return unique_id
-
-
 @app.route('/movies/details', methods=['GET'])
 def get_filtered_movie_details():
     try:
@@ -289,11 +281,8 @@ def add_favorite_movies():
         data = request.json
 
         # Kullanıcı kimliği ve favori filmlerin kimliklerini al
-        user_id_str = data.get('user_id')
+        user_id = data.get('user_id')
         movie_ids = data.get('movie_ids')
-
-        # Kullanıcı kimliğini benzersiz bir tamsayıya dönüştür
-        user_id = generate_unique_id(user_id_str)
 
         # Her film için kullanıcı-film ilişkisini veritabanına ekle
         db_config = {
@@ -320,6 +309,7 @@ def add_favorite_movies():
         return jsonify({'success': True, 'message': 'Favorite movies added successfully.', 'user_id': user_id}), 200
 
     except Exception as e:
+        print("Hata:", e)  
         return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':

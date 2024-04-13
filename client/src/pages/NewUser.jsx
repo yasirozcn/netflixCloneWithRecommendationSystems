@@ -35,10 +35,10 @@ function NewUser({ user, submitMovies }) {
 
     const index = selectedMovies.indexOf(id);
     if (index === -1) {
-      if (selectedMovies.length < 8) {
+      if (selectedMovies.length < 10) {
         setSelectedMovies((prevSelectedMovies) => [...prevSelectedMovies, id]);
       } else {
-        alert("You have already selected 8 movies");
+        alert("10 tane film seçtiniz daha fazla seçemezsiniz :(");
       }
     } else {
       const newSelectedMovies = [...selectedMovies];
@@ -48,7 +48,6 @@ function NewUser({ user, submitMovies }) {
   };
 
   const handleSubmit = () => {
-    // submitMovies fonksiyonunu çağır ve seçilen filmleri gönder
     submitMovies(selectedMovies);
   };
 
@@ -56,9 +55,9 @@ function NewUser({ user, submitMovies }) {
   return (
     <div className="new">
       <div className="top">
-        <h1>Lütfen en az 4 en fazla 8 film seçin.</h1>
+        <h1>Lütfen en beğendiğiniz en az 5 en fazla 10 film seçin.</h1>
         <button
-          className={selectedMovies.length < 4 ? "hide" : ""}
+          className={selectedMovies.length < 5 ? "hide" : ""}
           onClick={handleSubmit} // Gönder düğmesine tıklamada handleSubmit fonksiyonunu çağır
         >
           Gönder
