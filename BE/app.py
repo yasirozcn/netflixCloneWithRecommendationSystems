@@ -100,25 +100,26 @@ def recommend_movies_for_user(user_id, n=10, user_similarity_threshold=0.2, m=10
     agg_ratings = merged_data.groupby('original_title').agg(mean_rating=('rating', 'mean'),
                                                             number_of_ratings=('rating', 'count')).reset_index()
 
-    ratings_50 = agg_ratings[agg_ratings['number_of_ratings'] > 50]
-
     matrix = merged_data.pivot_table(index='userId', columns='original_title', values='rating')
-
     matrix_norm = matrix.subtract(matrix.mean(axis=1), axis='rows')
+    
     scaler = MinMaxScaler()
     matrix_norm_scaled = pd.DataFrame(scaler.fit_transform(matrix_norm), index=matrix_norm.index, columns=matrix_norm.columns)
-
+    
     user_similarity_cosine = cosine_similarity(matrix_norm_scaled.fillna(0))
     user_similarity_cosine_df = pd.DataFrame(user_similarity_cosine, index=matrix_norm_scaled.index, columns=matrix_norm_scaled.index)
-
     scaler = MinMaxScaler()
     user_similarity_normalized = pd.DataFrame(scaler.fit_transform(user_similarity_cosine_df), index=user_similarity_cosine_df.index, columns=user_similarity_cosine_df.columns)
+
+    # New: Include the new user's data
+    if user_id not in matrix_norm_scaled.index:
+        matrix_norm_scaled.loc[user_id] = None
+        user_similarity_normalized[user_id] = None
 
     user_similarity_normalized.drop(index=user_id, inplace=True)
 
     similar_users = user_similarity_normalized[user_similarity_normalized[user_id] > user_similarity_threshold][user_id].sort_values(
         ascending=False)[:n]
-
     user_id_watched = matrix_norm_scaled[matrix_norm_scaled.index == user_id].dropna(axis=1, how='all')
 
     similar_user_movies = matrix_norm_scaled[matrix_norm_scaled.index.isin(similar_users.index)].dropna(axis=1, how='all')
@@ -230,13 +231,29 @@ def user_based_recommend():
 
     recommendations = recommend_movies_for_user(user_id)
 
-    response = recommendations.to_json(orient='records')
+    # Yeni eklenen kısım
+    movie_ids = recommendations['movieId'].tolist()
+    movie_details_list = []
 
-    return response
+    for movie_id in movie_ids:
+        movie_details = get_movie_details(movie_id)
+        if movie_details:
+            movie_details['real_title'] = movie_details.get('title')  # Real title
+            movie_details.pop('title')  # Remove 'title'
+            # Her bir film için movie_details ve recommendations verileri bir araya getiriliyor
+            movie_details_with_recommendations = {
+                'movie_details': movie_details,
+                'recommendations': recommendations.loc[recommendations['movieId'] == movie_id].to_dict(orient='records')[0]
+            }
+            movie_details_list.append(movie_details_with_recommendations)
+
+    return jsonify(movie_details_list)
+
 
 @app.route('/new', methods=['GET'])
 def get_random_movies():
     try:
+        # Veritabanı bağlantı bilgileri
         db_config = {
             'host': 'localhost',
             'user': 'root',
@@ -244,21 +261,27 @@ def get_random_movies():
             'database': 'recom'
         }
 
+        # Veritabanına bağlan
         conn = mysql.connector.connect(**db_config)
-        data_query = "SELECT movieId FROM ratings_small"
+
+        # Filmlerin puanlamalarını içeren verileri al
+        data_query = "SELECT movieId FROM ratings_small GROUP BY movieId HAVING COUNT(*) > 40"
         ratings_data = pd.read_sql_query(data_query, conn)
+
+        # Bağlantıyı kapat
         conn.close()
 
+        # Seçilen filmlerin bulunduğu CSV dosyasını yükle
         selected_movies = pd.read_csv("/Users/ahmetyasirozcan/Desktop/Homeworks/recommendation_systems/archive/selected_movies.csv")
         selected_movies['id'] = pd.to_numeric(selected_movies['id'], errors='coerce', downcast='integer')
 
-        # Find common Id's and filter
+        # Ortak ID'leri bul ve filtrele
         filtered_movies = selected_movies[selected_movies['id'].isin(ratings_data['movieId'])]
 
-        # Select 30 random movies
+        # 30 rastgele film seç
         random_movies = filtered_movies.sample(n=30)
         
-        # Get movie details and movieIds
+        # Filmlerin detaylarını ve ID'lerini al
         movie_ids = random_movies['id'].tolist()
         movie_details_list = []
         for movie_id in movie_ids:
@@ -272,6 +295,7 @@ def get_random_movies():
     except Exception as e:
         print(f"An error occurred: {e}")
         return jsonify({'error': 'An error occurred while processing your request.'}), 500
+
 
     
 @app.route('/add_favorite_movies', methods=['POST'])

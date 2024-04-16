@@ -1,17 +1,18 @@
+/* eslint-disable react/prop-types */
 // eslint-disable-next-line no-unused-vars
-import React from 'react'
-import Navbar from '../components/Navbar'
-import Banner from '../components/Banner'
-import Main from '../components/Main'
+import React from "react";
+import Navbar from "../components/Navbar";
+import Banner from "../components/Banner";
+import Main from "../components/Main";
 
-function HomePage() {
+function HomePage({ user }) {
   return (
     <div>
-        <Navbar />
-        <Banner />
-        <Main />
+      <Navbar />
+      <Banner />
+      <Main user={user} />
     </div>
-  )
+  );
 }
 
-export default HomePage
+export default HomePage;

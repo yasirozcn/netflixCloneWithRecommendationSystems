@@ -58,7 +58,7 @@ function App() {
         <LoginPage />
       ) : (
         <Routes>
-          <Route exect path="/" element={<HomePage />} />
+          <Route exect path="/" element={<HomePage user={user} />} />
           <Route
             path="/profile"
             element={<Profiles user={user} setUser={setUser} />}
