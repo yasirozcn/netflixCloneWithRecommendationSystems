@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics.pairwise import cosine_similarity
@@ -6,17 +7,21 @@ import mysql.connector
 import requests
 import random
 from hashlib import sha256
-from flask_cors import CORS
+
 
 app = Flask(__name__)
 CORS(app)
 
-@app.after_request
-def after_request(response):
+def add_cors_headers(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Origin', '*')
     return response
+
+# CORS başlıklarını her yanıt için ekleyin
+@app.after_request
+def after_request(response):
+    return add_cors_headers(response)
 
 def item_based_recommendation(movie_title, min_ratings=40, top_n=10):
     db_config = {
@@ -221,9 +226,23 @@ def item_based_recommend():
 
     recommendations = item_based_recommendation(movie_title)
 
-    response = recommendations.to_json(orient='records')
+    movie_ids = recommendations['movieId'].tolist()
+    movie_details_list = []
 
-    return response
+    for movie_id in movie_ids:
+        movie_details = get_movie_details(movie_id)
+        if movie_details:
+            movie_details['real_title'] = movie_details.get('title')  # Real title
+            movie_details.pop('title')  # Remove 'title'
+            # Her bir film için movie_details ve recommendations verileri bir araya getiriliyor
+            movie_details_with_recommendations = {
+                'movie_details': movie_details,
+                'recommendations': recommendations.loc[recommendations['movieId'] == movie_id].to_dict(orient='records')[0]
+            }
+            movie_details_list.append(movie_details_with_recommendations)
+
+    return jsonify(movie_details_list)
+
 
 @app.route('/ub', methods=['GET'])
 def user_based_recommend():
@@ -231,7 +250,6 @@ def user_based_recommend():
 
     recommendations = recommend_movies_for_user(user_id)
 
-    # Yeni eklenen kısım
     movie_ids = recommendations['movieId'].tolist()
     movie_details_list = []
 
