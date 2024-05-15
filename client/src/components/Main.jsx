@@ -1,29 +1,34 @@
-/* eslint-disable react/jsx-key */
+/* eslint-disable no-unused-vars */
 /* eslint-disable react/prop-types */
-// eslint-disable-next-line no-unused-vars
+/* eslint-disable react/jsx-key */
 import React, { useEffect, useState } from "react";
 import "../styles/main.css";
 
-function Main({ user }) {
+function Main({ user, submitMovies }) {
   const [movieDetails, setMovieDetails] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
-  console.log("yasir", user);
+  const [loading, setLoading] = useState(false);
+
   function getRecommendations(type, movieTitle) {
+    setLoading(true);
     fetch(`http://127.0.0.1:5000/${type}?movie_title=${movieTitle}`)
       .then((response) => response.json())
       .then((data) => {
         setRecommendations(data);
+        setLoading(false);
         if (data.length === 0) {
           console.log("No recommendations found.");
         }
       })
-      .catch((error) => console.error("Error:", error));
+      .catch((error) => {
+        setLoading(false);
+        console.error("Error:", error);
+      });
   }
 
-  console.log("recom", recommendations);
   useEffect(() => {
-    // Check if user is logged in
     if (user && user.uid) {
+      setLoading(true);
       fetch(`http://127.0.0.1:5000/ub?user_id=${user.uid}`)
         .then((response) => {
           if (!response.ok) {
@@ -33,12 +38,20 @@ function Main({ user }) {
         })
         .then((data) => {
           setMovieDetails(data);
+          setLoading(false);
         })
         .catch((error) => {
+          setLoading(false);
           console.error("There was a problem with the fetch operation:", error);
         });
     }
   }, [user]);
+
+  const addToFavorites = (movieId) => {
+    // Burada favorilere ekleme işlemi yapılacak
+    console.log(`Added to favorites: ${movieId}`);
+  };
+
   return (
     <>
       <div className="row">
@@ -49,18 +62,27 @@ function Main({ user }) {
               <img
                 src={`https://image.tmdb.org/t/p/original/${movie.movie_details.poster_path}`}
                 alt={movie.movie_details.real_title}
-                onClick={() =>
-                  getRecommendations("ib", movie.recommendations.original_title)
-                }
+                onClick={() => {
+                  getRecommendations(
+                    "ib",
+                    movie.recommendations.original_title
+                  );
+                  console.log(movie.recommendations.movieId);
+                }}
               />
-              {/* <h2>{movie.title}</h2> */}
-              {/* <p>{movie.overview}</p> */}
-              {/* <p>Release Date: {movie.release_date}</p> */}
+              <button
+                className="favoriteButton"
+                onClick={() => addToFavorites(movie.recommendations.movieId)}
+              >
+                ❤️
+              </button>
             </li>
           ))}
         </ul>
       </div>
-      {recommendations.length > 0 && (
+      {loading ? (
+        <div className="row loading"></div>
+      ) : recommendations.length > 0 ? (
         <div className="row">
           <h1>Recommended Movie Details</h1>
           <ul className="main__container">
@@ -73,14 +95,17 @@ function Main({ user }) {
                     getRecommendations("ib", movie.recommendations.movieName)
                   }
                 />
-                {/* <h2>{movie.title}</h2> */}
-                {/* <p>{movie.overview}</p> */}
-                {/* <p>Release Date: {movie.release_date}</p> */}
+                <button
+                  className="favoriteButton"
+                  onClick={() => addToFavorites(movie.recommendations.movieId)}
+                >
+                  ❤️
+                </button>
               </li>
             ))}
           </ul>
         </div>
-      )}
+      ) : null}
     </>
   );
 }

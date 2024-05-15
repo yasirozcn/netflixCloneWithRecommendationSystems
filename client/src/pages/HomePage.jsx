@@ -5,12 +5,12 @@ import Navbar from "../components/Navbar";
 import Banner from "../components/Banner";
 import Main from "../components/Main";
 
-function HomePage({ user }) {
+function HomePage({ user, submitMovies }) {
   return (
     <div>
       <Navbar />
       <Banner />
-      <Main user={user} />
+      <Main user={user} submitMovies={submitMovies} />
     </div>
   );
 }

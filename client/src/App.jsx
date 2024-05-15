@@ -58,7 +58,11 @@ function App() {
         <LoginPage />
       ) : (
         <Routes>
-          <Route exect path="/" element={<HomePage user={user} />} />
+          <Route
+            exect
+            path="/"
+            element={<HomePage user={user} submitMovies={submitMovies} />}
+          />
           <Route
             path="/profile"
             element={<Profiles user={user} setUser={setUser} />}
