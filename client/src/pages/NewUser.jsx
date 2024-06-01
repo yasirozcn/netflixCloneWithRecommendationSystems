@@ -51,7 +51,7 @@ function NewUser({ user, submitMovies }) {
   };
 
   const handleSubmit = () => {
-    submitMovies(selectedMovies);
+    submitMovies(selectedMovies,5);
   };
 
   const handleRefresh = () => {

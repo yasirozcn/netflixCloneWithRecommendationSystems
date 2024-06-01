@@ -11,33 +11,38 @@ import NewUser from "./pages/NewUser";
 function App() {
   const [user, setUser] = useState({});
 
-  const submitMovies = (selectedMovies) => {
+  const submitMovies = (selectedMovies, rating) => {
+    const movies = selectedMovies.map(movieId => ({
+        movie_id: movieId,
+        rating: rating
+    }));
+
     fetch("http://127.0.0.1:5000/add_favorite_movies", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        user_id: user.uid,
-        movie_ids: selectedMovies,
-      }),
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            user_id: user.uid,
+            movies: movies,
+        }),
     })
-      .then((response) => {
+    .then((response) => {
         if (!response.ok) {
-          throw new Error("Network response was not ok");
+            throw new Error("Network response was not ok");
         }
         return response.json();
-      })
-      .then((data) => {
+    })
+    .then((data) => {
         console.log(data);
         alert("Seçilen filmler başarı ile kaydedildi.");
         window.location.href = "/";
-      })
-      .catch((error) => {
+    })
+    .catch((error) => {
         console.error("There was a problem with the fetch operation:", error);
         // Handle error
-      });
-  };
+    });
+};
 
   useEffect(() => {
     auth.onAuthStateChanged((userAuth) => {

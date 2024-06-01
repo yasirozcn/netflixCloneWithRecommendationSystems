@@ -27,7 +27,7 @@ def item_based_recommendation(movie_title, min_ratings=40, top_n=10):
     db_config = {
         'host': 'localhost',
         'user': 'root',
-        'password': '54zs106ve449',
+        'password': 'koolay',
         'database': 'recom'
     }
 
@@ -38,7 +38,7 @@ def item_based_recommendation(movie_title, min_ratings=40, top_n=10):
 
     conn.close()
 
-    selected_columns = pd.read_csv(r"/Users/ahmetyasirozcan/Desktop/Homeworks/recommendation_systems/archive/selected_movies.csv")
+    selected_columns = pd.read_csv("C:/Users/Yasir Özcan/OneDrive/Masaüstü/netflix-recom/archive/selected_movies.csv")
 
     selected_columns = selected_columns.rename(columns={"id": "movieId"})
     selected_columns = selected_columns[['movieId', 'original_title']]
@@ -80,7 +80,7 @@ def recommend_movies_for_user(user_id, n=10, user_similarity_threshold=0.2, m=10
     db_config = {
         'host': 'localhost',
         'user': 'root',
-        'password': '54zs106ve449',
+        'password': 'koolay',
         'database': 'recom'
     }
 
@@ -91,7 +91,7 @@ def recommend_movies_for_user(user_id, n=10, user_similarity_threshold=0.2, m=10
 
     conn.close()
 
-    selected_columns = pd.read_csv(r"/Users/ahmetyasirozcan/Desktop/Homeworks/recommendation_systems/archive/selected_movies.csv")
+    selected_columns = pd.read_csv("C:/Users/Yasir Özcan/OneDrive/Masaüstü/netflix-recom/archive/selected_movies.csv")
     
     selected_columns = selected_columns.rename(columns={"id": "movieId"})
     movie_names = selected_columns.copy()
@@ -189,7 +189,7 @@ def get_filtered_movie_details():
         db_config = {
             'host': 'localhost',
             'user': 'root',
-            'password': '54zs106ve449',
+            'password': 'koolay',
             'database': 'recom'
         }
 
@@ -199,7 +199,7 @@ def get_filtered_movie_details():
         conn.close()
 
         # Load and convert selected movies' Id to int
-        selected_movies = pd.read_csv("/Users/ahmetyasirozcan/Desktop/Homeworks/recommendation_systems/archive/selected_movies.csv")
+        selected_movies = pd.read_csv("C:/Users/Yasir Özcan/OneDrive/Masaüstü/netflix-recom/archive/selected_movies.csv")
         selected_movies['id'] = pd.to_numeric(selected_movies['id'], errors='coerce', downcast='integer')
 
 
@@ -275,7 +275,7 @@ def get_random_movies():
         db_config = {
             'host': 'localhost',
             'user': 'root',
-            'password': '54zs106ve449',
+            'password': 'koolay',
             'database': 'recom'
         }
 
@@ -290,7 +290,7 @@ def get_random_movies():
         conn.close()
 
         # Seçilen filmlerin bulunduğu CSV dosyasını yükle
-        selected_movies = pd.read_csv("/Users/ahmetyasirozcan/Desktop/Homeworks/recommendation_systems/archive/selected_movies.csv")
+        selected_movies = pd.read_csv("C:/Users/Yasir Özcan/OneDrive/Masaüstü/netflix-recom/archive/selected_movies.csv")
         selected_movies['id'] = pd.to_numeric(selected_movies['id'], errors='coerce', downcast='integer')
 
         # Ortak ID'leri bul ve filtrele
@@ -322,25 +322,27 @@ def add_favorite_movies():
         # Gelen veriyi JSON formatında al
         data = request.json
 
-        # Kullanıcı kimliği ve favori filmlerin kimliklerini al
+        # Kullanıcı kimliği, favori filmlerin kimlikleri ve puanı al
         user_id = data.get('user_id')
-        movie_ids = data.get('movie_ids')
+        movies = data.get('movies')  # Her film için {movie_id, rating} olacak
 
         # Her film için kullanıcı-film ilişkisini veritabanına ekle
         db_config = {
             'host': 'localhost',
             'user': 'root',
-            'password': '54zs106ve449',
+            'password': 'koolay',
             'database': 'recom'
         }
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
 
-        for movie_id in movie_ids:
+        for movie in movies:
+            movie_id = movie.get('movie_id')
+            rating = movie.get('rating')
             # SQL sorgusu
             sql = "INSERT INTO ratings_small (userId, movieId, rating) VALUES (%s, %s, %s)"
             # Parametreler
-            val = (user_id, movie_id, 5)  # Kullanıcının tüm favori filmlerine 5 puan veriyoruz
+            val = (user_id, movie_id, rating)
             # Sorguyu çalıştırma
             cursor.execute(sql, val)
 
@@ -351,8 +353,9 @@ def add_favorite_movies():
         return jsonify({'success': True, 'message': 'Favorite movies added successfully.', 'user_id': user_id}), 200
 
     except Exception as e:
-        print("Hata:", e)  
+        print("Hata:", e)
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)

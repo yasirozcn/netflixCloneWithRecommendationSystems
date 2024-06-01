@@ -3,6 +3,8 @@
 /* eslint-disable react/jsx-key */
 import React, { useEffect, useState } from "react";
 import "../styles/main.css";
+import { AiFillLike } from "react-icons/ai";
+import { AiFillDislike } from "react-icons/ai";
 
 function Main({ user, submitMovies }) {
   const [movieDetails, setMovieDetails] = useState([]);
@@ -48,9 +50,13 @@ function Main({ user, submitMovies }) {
   }, [user]);
 
   const addToFavorites = (movieId) => {
-    // Burada favorilere ekleme işlemi yapılacak
+    submitMovies([movieId], 5);
     console.log(`Added to favorites: ${movieId}`);
   };
+  const dislike = (movieId) => {
+    submitMovies([movieId], 1);
+    console.log(`Disliked: ${movieId}`);
+  }
 
   return (
     <>
@@ -74,8 +80,9 @@ function Main({ user, submitMovies }) {
                 className="favoriteButton"
                 onClick={() => addToFavorites(movie.recommendations.movieId)}
               >
-                ❤️
+                <AiFillLike />
               </button>
+              <button className="dislikeButton" onClick={()=>dislike(movie.recommendations.movieId)}><AiFillDislike/></button>
             </li>
           ))}
         </ul>
@@ -99,8 +106,9 @@ function Main({ user, submitMovies }) {
                   className="favoriteButton"
                   onClick={() => addToFavorites(movie.recommendations.movieId)}
                 >
-                  ❤️
+                  <AiFillLike />
                 </button>
+                <button className="dislikeButton" onClick={()=>dislike(movie.recommendations.movieId)}><AiFillDislike/></button>
               </li>
             ))}
           </ul>
