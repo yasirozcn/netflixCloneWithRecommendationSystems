@@ -7,10 +7,18 @@ import mysql.connector
 import requests
 import random
 from hashlib import sha256
+from scipy.sparse import csr_matrix
+import numpy as np
 
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={
+    r"/*": {
+        "origins": ["http://localhost:5173", "http://127.0.0.1:5173"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 def add_cors_headers(response):
     response.headers.add('Access-Control-Allow-Origin', '*')
@@ -21,140 +29,223 @@ def add_cors_headers(response):
 # CORS başlıklarını her yanıt için ekleyin
 @app.after_request
 def after_request(response):
-    return add_cors_headers(response)
+    response.headers.add('Access-Control-Allow-Origin', 'http://localhost:5173')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
 
 def item_based_recommendation(movie_title, min_ratings=40, top_n=10):
-    db_config = {
-        'host': 'localhost',
-        'user': 'root',
-        'password': 'koolay',
-        'database': 'recom'
-    }
+    try:
+        print(f"\n[DEBUG] Film bazlı öneri başlangıç: film={movie_title}")
+        
+        db_config = {
+            'host': 'localhost',
+            'user': 'root',
+            'password': '54zs106ve449',
+            'database': 'recom'
+        }
 
-    conn = mysql.connector.connect(**db_config)
+        conn = mysql.connector.connect(**db_config)
 
-    data_query = "SELECT * FROM ratings_small"
-    data = pd.read_sql_query(data_query, conn)
+        # MySQL uyumlu sorgu
+        data_query = """
+            WITH popular_movies AS (
+                SELECT movieId 
+                FROM ratings 
+                GROUP BY movieId 
+                HAVING COUNT(*) > 40
+                ORDER BY COUNT(*) DESC
+                LIMIT 1000
+            )
+            SELECT r.* 
+            FROM ratings r
+            JOIN popular_movies pm ON r.movieId = pm.movieId
+        """
+        
+        print("[DEBUG] SQL sorgusu çalıştırılıyor...")
+        data = pd.read_sql_query(data_query, conn)
+        print(f"[DEBUG] Veri çekildi. Şekil: {data.shape}")
 
-    conn.close()
+        conn.close()
 
-    selected_columns = pd.read_csv("C:/Users/Yasir Özcan/OneDrive/Masaüstü/netflix-recom/archive/selected_movies.csv")
+        # CSV'den sadece gerekli sütunları oku
+        selected_columns = pd.read_csv("/Users/ahmetyasirozcan/Documents/Projects/netflixCloneWithRecommendationSystems/BE/archive/movies_metadata.csv",
+                                     usecols=['id', 'original_title'])
 
-    selected_columns = selected_columns.rename(columns={"id": "movieId"})
-    selected_columns = selected_columns[['movieId', 'original_title']]
-    selected_columns['movieId'] = pd.to_numeric(selected_columns['movieId'], errors='coerce', downcast='integer')
-    selected_columns = selected_columns.dropna(subset=['movieId']).astype({'movieId': 'int'})
-    selected_columns = selected_columns.sort_values(by='movieId')
-    merged_data = pd.merge(data, selected_columns, on='movieId', how='inner')
-    merged_data.drop('timestamp', axis=1, inplace=True)
+        selected_columns = selected_columns.rename(columns={"id": "movieId"})
+        selected_columns['movieId'] = pd.to_numeric(selected_columns['movieId'], errors='coerce', downcast='integer')
+        selected_columns = selected_columns.dropna(subset=['movieId'])
+        
+        # Veri birleştirme
+        merged_data = pd.merge(data, selected_columns, on='movieId', how='inner')
+        print(f"[DEBUG] Veriler birleştirildi. Şekil: {merged_data.shape}")
 
-    table = merged_data.pivot_table(index="userId", columns="original_title", values="rating")
+        # Pivot table oluştur
+        table = merged_data.pivot_table(index="userId", columns="original_title", values="rating")
+        print("[DEBUG] Pivot table oluşturuldu")
 
-    recommend = table[movie_title]
+        if movie_title not in table.columns:
+            print(f"[DEBUG] Film bulunamadı: {movie_title}")
+            return pd.DataFrame(columns=['movieId', 'movieName', 'Correlation', 'number_of_ratings'])
 
-    correlation = table.corrwith(recommend)
+        # Benzerlik hesaplama
+        recommend = table[movie_title]
+        correlation = table.corrwith(recommend)
+        correlation_dataframe = pd.DataFrame(correlation, columns=["Correlation"])
+        correlation_dataframe.dropna(inplace=True)
+        
+        print("[DEBUG] Korelasyon hesaplandı")
 
-    correlation_dataframe = pd.DataFrame(correlation, columns=["Correlation"])
+        # Rating sayılarını hesapla
+        ratings = pd.DataFrame(merged_data.groupby("original_title")["rating"].agg(['mean', 'count']))
+        correlation_dataframe = correlation_dataframe.join(ratings['count'])
+        correlation_dataframe = correlation_dataframe.rename(columns={'count': 'number_of_ratings'})
 
-    correlation_dataframe.dropna(inplace=True)
+        # Final önerileri oluştur
+        final_recommendation = correlation_dataframe[
+            correlation_dataframe["number_of_ratings"] > min_ratings
+        ].sort_values("Correlation", ascending=False)[:top_n]
+        
+        final_recommendation = final_recommendation.reset_index()
+        final_recommendation = pd.merge(
+            final_recommendation, 
+            selected_columns, 
+            left_on='original_title', 
+            right_on='original_title', 
+            how='left'
+        )
+        final_recommendation = final_recommendation.rename(columns={
+            "movieId": "movieId", 
+            "original_title": "movieName"
+        })
 
-    correlation_dataframe = correlation_dataframe.sort_values("Correlation", ascending=False)
+        print("[DEBUG] Öneriler oluşturuldu")
+        print(final_recommendation[['movieId', 'movieName', 'Correlation', 'number_of_ratings']])
 
-    ratings = pd.DataFrame(merged_data.groupby("original_title")["rating"].mean())
-    ratings["number_of_ratings"] = merged_data.groupby("original_title")["rating"].count()
+        return final_recommendation[['movieId', 'movieName', 'Correlation', 'number_of_ratings']]
 
-    ratings.sort_values(by="number_of_ratings", ascending=False, inplace=True)
-
-    correlation_dataframe = correlation_dataframe.join(ratings["number_of_ratings"])
-
-    final_recommendation = correlation_dataframe[correlation_dataframe["number_of_ratings"] > min_ratings] \
-        .sort_values("Correlation", ascending=False)[:top_n]
-    
-    final_recommendation = final_recommendation.reset_index()
-    final_recommendation = pd.merge(final_recommendation, selected_columns, on='original_title', how='left')
-    final_recommendation = final_recommendation.rename(columns={"movieId": "movieId", "original_title": "movieName"})
-
-    return final_recommendation[['movieId', 'movieName', 'Correlation', 'number_of_ratings']]
+    except Exception as e:
+        print(f"[ERROR] Film bazlı öneri hatası: {str(e)}")
+        raise e
 
 def recommend_movies_for_user(user_id, n=10, user_similarity_threshold=0.2, m=10):
-    db_config = {
-        'host': 'localhost',
-        'user': 'root',
-        'password': 'koolay',
-        'database': 'recom'
-    }
+    try:
+        print(f"\n[DEBUG] Başlangıç: user_id={user_id}")
+        
+        db_config = {
+            'host': 'localhost',
+            'user': 'root',
+            'password': '54zs106ve449',
+            'database': 'recom'
+        }
 
-    conn = mysql.connector.connect(**db_config)
+        conn = mysql.connector.connect(**db_config)
+        print("[DEBUG] Veritabanı bağlantısı başarılı")
 
-    data_query = "SELECT * FROM ratings_small"
-    ratings = pd.read_sql_query(data_query, conn)
+        # Veri setini daha da küçült
+        data_query = """
+            WITH popular_movies AS (
+                SELECT movieId 
+                FROM ratings 
+                GROUP BY movieId 
+                HAVING COUNT(*) > 100
+                LIMIT 500
+            ),
+            recent_users AS (
+                SELECT DISTINCT userId 
+                FROM ratings 
+                ORDER BY userId DESC 
+                LIMIT 5000
+            )
+            SELECT r.userId, r.movieId, r.rating
+            FROM ratings r
+            JOIN recent_users u ON r.userId = u.userId
+            JOIN popular_movies m ON r.movieId = m.movieId
+        """
+        
+        print("[DEBUG] SQL sorgusu çalıştırılıyor...")
+        ratings = pd.read_sql_query(data_query, conn)
+        print(f"[DEBUG] Veri çekildi. Şekil: {ratings.shape}")
 
-    conn.close()
+        conn.close()
 
-    selected_columns = pd.read_csv("C:/Users/Yasir Özcan/OneDrive/Masaüstü/netflix-recom/archive/selected_movies.csv")
-    
-    selected_columns = selected_columns.rename(columns={"id": "movieId"})
-    movie_names = selected_columns.copy()
-    movie_names['movieId'] = pd.to_numeric(movie_names['movieId'], errors='coerce', downcast='integer')
-    movie_names = movie_names.dropna(subset=['movieId']).astype({'movieId': 'int'})
-    movie_names = movie_names.sort_values(by='movieId')
-    
-    merged_data = pd.merge(ratings, movie_names, on='movieId', how='inner')
-    merged_data.drop('timestamp', axis=1, inplace=True)
-    
-    agg_ratings = merged_data.groupby('original_title').agg(mean_rating=('rating', 'mean'),
-                                                            number_of_ratings=('rating', 'count')).reset_index()
+        # CSV'den sadece gerekli sütunları oku
+        selected_columns = pd.read_csv("/Users/ahmetyasirozcan/Documents/Projects/netflixCloneWithRecommendationSystems/BE/archive/movies_metadata.csv", 
+                                     usecols=['id', 'original_title'])
+        
+        selected_columns = selected_columns.rename(columns={"id": "movieId"})
+        selected_columns['movieId'] = pd.to_numeric(selected_columns['movieId'], errors='coerce', downcast='integer')
+        selected_columns = selected_columns.dropna(subset=['movieId'])
+        
+        # Veri birleştirme
+        merged_data = pd.merge(ratings, selected_columns, on='movieId', how='inner')
+        print(f"[DEBUG] Veriler birleştirildi. Şekil: {merged_data.shape}")
 
-    matrix = merged_data.pivot_table(index='userId', columns='original_title', values='rating')
-    matrix_norm = matrix.subtract(matrix.mean(axis=1), axis='rows')
-    
-    scaler = MinMaxScaler()
-    matrix_norm_scaled = pd.DataFrame(scaler.fit_transform(matrix_norm), index=matrix_norm.index, columns=matrix_norm.columns)
-    
-    user_similarity_cosine = cosine_similarity(matrix_norm_scaled.fillna(0))
-    user_similarity_cosine_df = pd.DataFrame(user_similarity_cosine, index=matrix_norm_scaled.index, columns=matrix_norm_scaled.index)
-    scaler = MinMaxScaler()
-    user_similarity_normalized = pd.DataFrame(scaler.fit_transform(user_similarity_cosine_df), index=user_similarity_cosine_df.index, columns=user_similarity_cosine_df.columns)
+        # Kullanıcı-film matrisi oluştur (sparse matrix)
+        user_ids = merged_data['userId'].unique()
+        movie_ids = merged_data['movieId'].unique()
+        
+        user_to_idx = {uid: i for i, uid in enumerate(user_ids)}
+        movie_to_idx = {mid: i for i, mid in enumerate(movie_ids)}
+        
+        ratings_sparse = csr_matrix(
+            (merged_data['rating'],
+             (merged_data['userId'].map(user_to_idx),
+              merged_data['movieId'].map(movie_to_idx)))
+        )
+        
+        # Benzerlik hesaplama (batch işleme ile)
+        batch_size = 1000
+        n_users = len(user_ids)
+        similarities = np.zeros((n_users, n_users))
+        
+        for i in range(0, n_users, batch_size):
+            end = min(i + batch_size, n_users)
+            batch = ratings_sparse[i:end]
+            similarities[i:end] = cosine_similarity(batch, ratings_sparse)
+        
+        user_similarity_df = pd.DataFrame(
+            similarities,
+            index=user_ids,
+            columns=user_ids
+        )
+        
+        print("[DEBUG] Benzerlik hesaplaması tamamlandı")
+        
+        if user_id not in user_similarity_df.columns:
+            print(f"[DEBUG] Yeni kullanıcı: {user_id}")
+            # Yeni kullanıcı için popüler filmleri öner
+            popular_movies = merged_data.groupby('movieId').agg({
+                'rating': ['mean', 'count'],
+                'original_title': 'first'
+            }).reset_index()
+            popular_movies.columns = ['movieId', 'movie_score', 'rating_count', 'original_title']
+            popular_movies = popular_movies[popular_movies['rating_count'] > 50]
+            return popular_movies.sort_values('movie_score', ascending=False)[['movieId', 'original_title', 'movie_score']].head(m)
 
-    # New: Include the new user's data
-    if user_id not in matrix_norm_scaled.index:
-        matrix_norm_scaled.loc[user_id] = None
-        user_similarity_normalized[user_id] = None
+        # En benzer kullanıcıları bul
+        similar_users = user_similarity_df[user_id].nlargest(n+1)[1:]
+        
+        # Önerileri hesapla
+        recommendations = merged_data[
+            merged_data['userId'].isin(similar_users.index)
+        ].groupby(['movieId', 'original_title']).agg({
+            'rating': ['mean', 'count']
+        }).reset_index()
+        
+        recommendations.columns = ['movieId', 'original_title', 'movie_score', 'rating_count']
+        recommendations = recommendations[recommendations['rating_count'] > 10]
+        recommendations = recommendations.sort_values('movie_score', ascending=False).head(m)
+        
+        print("[DEBUG] Öneriler oluşturuldu")
+        print(recommendations[['movieId', 'original_title', 'movie_score']])
+        
+        return recommendations[['movieId', 'original_title', 'movie_score']]
 
-    user_similarity_normalized.drop(index=user_id, inplace=True)
-
-    similar_users = user_similarity_normalized[user_similarity_normalized[user_id] > user_similarity_threshold][user_id].sort_values(
-        ascending=False)[:n]
-    user_id_watched = matrix_norm_scaled[matrix_norm_scaled.index == user_id].dropna(axis=1, how='all')
-
-    similar_user_movies = matrix_norm_scaled[matrix_norm_scaled.index.isin(similar_users.index)].dropna(axis=1, how='all')
-
-    similar_user_movies.drop(user_id_watched.columns, axis=1, inplace=True, errors='ignore')
-
-    item_score = {}
-
-    for i in similar_user_movies.columns:
-        movie_rating = similar_user_movies[i]
-        total = 0
-        count = 0
-        for u in similar_users.index:
-            if pd.notna(movie_rating[u]):
-                score = similar_users[u] * movie_rating[u]
-                total += score
-                count += 1
-        if count > 0:
-            item_score[i] = total / count
-
-    item_score_df = pd.DataFrame(item_score.items(), columns=['original_title', 'movie_score'])
-
-    ranked_item_score = item_score_df.sort_values(by='movie_score', ascending=False)
-
-    recommended_movies = ranked_item_score.head(m)
-
-    recommended_movies_with_id = pd.merge(recommended_movies, merged_data[['original_title', 'movieId']], on='original_title', how='inner')
-    recommended_movies_with_id.drop_duplicates(inplace=True)
-    
-    return recommended_movies_with_id[['movieId', 'original_title', 'movie_score']]
+    except Exception as e:
+        print(f"[ERROR] Hata oluştu: {str(e)}")
+        raise e
 
 def get_movie_details(movie_id):
     api_key = '6133d9a22c9c2a11c2cbd28843448ad3'
@@ -189,17 +280,17 @@ def get_filtered_movie_details():
         db_config = {
             'host': 'localhost',
             'user': 'root',
-            'password': 'koolay',
+            'password': '54zs106ve449',
             'database': 'recom'
         }
 
         conn = mysql.connector.connect(**db_config)
-        data_query = "SELECT movieId FROM ratings_small"
+        data_query = "SELECT movieId FROM ratings"
         ratings_data = pd.read_sql_query(data_query, conn)
         conn.close()
 
         # Load and convert selected movies' Id to int
-        selected_movies = pd.read_csv("C:/Users/Yasir Özcan/OneDrive/Masaüstü/netflix-recom/archive/selected_movies.csv")
+        selected_movies = pd.read_csv("/Users/ahmetyasirozcan/Documents/Projects/netflixCloneWithRecommendationSystems/BE/archive/movies_metadata.csv")
         selected_movies['id'] = pd.to_numeric(selected_movies['id'], errors='coerce', downcast='integer')
 
 
@@ -275,7 +366,7 @@ def get_random_movies():
         db_config = {
             'host': 'localhost',
             'user': 'root',
-            'password': 'koolay',
+            'password': '54zs106ve449',
             'database': 'recom'
         }
 
@@ -283,14 +374,14 @@ def get_random_movies():
         conn = mysql.connector.connect(**db_config)
 
         # Filmlerin puanlamalarını içeren verileri al
-        data_query = "SELECT movieId FROM ratings_small GROUP BY movieId HAVING COUNT(*) > 40"
+        data_query = "SELECT movieId FROM ratings GROUP BY movieId HAVING COUNT(*) > 100"
         ratings_data = pd.read_sql_query(data_query, conn)
 
         # Bağlantıyı kapat
         conn.close()
 
         # Seçilen filmlerin bulunduğu CSV dosyasını yükle
-        selected_movies = pd.read_csv("C:/Users/Yasir Özcan/OneDrive/Masaüstü/netflix-recom/archive/selected_movies.csv")
+        selected_movies = pd.read_csv("/Users/ahmetyasirozcan/Documents/Projects/netflixCloneWithRecommendationSystems/BE/archive/movies_metadata.csv")
         selected_movies['id'] = pd.to_numeric(selected_movies['id'], errors='coerce', downcast='integer')
 
         # Ortak ID'leri bul ve filtrele
@@ -330,7 +421,7 @@ def add_favorite_movies():
         db_config = {
             'host': 'localhost',
             'user': 'root',
-            'password': 'koolay',
+            'password': '54zs106ve449',
             'database': 'recom'
         }
         conn = mysql.connector.connect(**db_config)
@@ -340,7 +431,7 @@ def add_favorite_movies():
             movie_id = movie.get('movie_id')
             rating = movie.get('rating')
             # SQL sorgusu
-            sql = "INSERT INTO ratings_small (userId, movieId, rating) VALUES (%s, %s, %s)"
+            sql = "INSERT INTO ratings (userId, movieId, rating) VALUES (%s, %s, %s)"
             # Parametreler
             val = (user_id, movie_id, rating)
             # Sorguyu çalıştırma

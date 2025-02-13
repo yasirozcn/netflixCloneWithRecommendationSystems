@@ -13,8 +13,22 @@ function Main({ user, submitMovies }) {
 
   function getRecommendations(type, movieTitle) {
     setLoading(true);
-    fetch(`http://127.0.0.1:5000/${type}?movie_title=${movieTitle}`)
-      .then((response) => response.json())
+    const encodedTitle = encodeURIComponent(movieTitle);
+    
+    fetch(`http://127.0.0.1:5000/${type}?movie_title=${encodedTitle}`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
       .then((data) => {
         setRecommendations(data);
         setLoading(false);

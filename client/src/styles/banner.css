@@ -1,53 +1,122 @@
 .banner {
-    height: 100vh;
-    position: relative;
-    object-fit: contain;
+  position: relative;
+  height: 80vh;
+  color: white;
+  object-fit: contain;
+  background-position: center;
+  background-size: cover;
+}
+
+.banner::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(37, 37, 37, 0.61) 60%,
+    #111 100%
+  );
+}
+
+.banner__contents {
+  position: relative;
+  height: 100%;
+  padding: 7% 5%;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.banner__title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  padding-bottom: 0.5rem;
+  max-width: 80%;
+}
+
+.banner__description {
+  font-size: clamp(0.9rem, 2vw, 1.2rem);
+  line-height: 1.5;
+  padding-top: 1rem;
+  max-width: 60%;
+  max-height: 30%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+
+.banner__buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.banner__button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  color: white;
+  outline: none;
+  border: none;
+  font-weight: 700;
+  border-radius: 0.2vw;
+  padding: 0.8rem 2rem;
+  background-color: rgba(51, 51, 51, 0.5);
+  transition: all 0.2s;
+}
+
+.banner__button:hover {
+  background-color: #e6e6e6;
+  color: #000;
+}
+
+.banner__icons {
+  font-size: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .banner {
+    height: 60vh;
   }
   
   .banner__contents {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-90%, -40%);
-    text-align: left;
-    color: #fff;
+    padding: 5% 3%;
   }
-  .banner__title {
-    font-size: 4rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-  }
+
   .banner__description {
-    font-size: 1rem;
-    font-weight: 400;
-    margin-bottom: 1.5rem;
-    width: 60%;
-  }
-  .banner__buttons {
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-  .banner__button {
-    border: none;
-    background-color: #fff;
-    color: #000;
-    border: none;
-    padding: 0.3rem 1rem;
-    border-radius: 0.3rem;
-    font-size: 1.3rem;
-    font-weight: 400;
-    margin-bottom: 1rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-  }
-  .banner__icons {
-    gap: 1rem;
-    font-size: 2.5rem;
+    max-width: 90%;
+    -webkit-line-clamp: 3;
   }
   
-  .banner__button:hover {
-    opacity: 0.6;
+  .banner__button {
+    padding: 0.5rem 1.5rem;
   }
+}
+
+@media (max-width: 480px) {
+  .banner {
+    height: 50vh;
+  }
+  
+  .banner__title {
+    max-width: 100%;
+  }
+
+  .banner__description {
+    -webkit-line-clamp: 2;
+  }
+  
+  .banner__buttons {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
   
